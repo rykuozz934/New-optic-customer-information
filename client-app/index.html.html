@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="mn">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>New Optic customer information</title>
+
+   <!-- iOS support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+
+  <style>
+    :root{
+      --accent:#2563eb;
+      --bg:#f7f9fc;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --danger:#ef4444;
+    }
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial; margin:0; background:var(--bg); color:#111;}
+    .app{max-width:940px;margin:28px auto;padding:20px;}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+    h1{font-size:20px;margin:0}
+    .card{background:var(--card);border-radius:10px;padding:14px;box-shadow:0 6px 18px rgba(15,23,42,0.06)}
+    form{display:grid;grid-template-columns: 1fr 150px;gap:10px;align-items:center}
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    input[type=text], textarea{width:100%;padding:10px;border:1px solid #e6e9ef;border-radius:8px;font-size:14px}
+    textarea{resize:vertical}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    button{background:var(--accent);color:#fff;border:0;padding:10px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+    button.secondary{background:#f1f5f9;color:#111}
+    button.danger{background:var(--danger)}
+    .controls{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+    .search{flex:1;display:flex;gap:8px}
+    .search input{flex:1}
+    .list{margin-top:16px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:left;font-size:14px}
+    th{background:transparent;color:var(--muted);font-weight:600}
+    tr:hover{background:#fbfdff}
+    .small{font-size:13px;color:var(--muted)}
+    .pill{display:inline-block;padding:6px 8px;border-radius:999px;background:#f8fafc;border:1px solid #eef2f7;font-size:13px}
+    .empty{padding:30px;text-align:center;color:var(--muted)}
+    .row-actions{display:flex;gap:6px}
+    @media (max-width:700px){
+      form{grid-template-columns:1fr; }
+      header{flex-direction:column;align-items:flex-start;gap:6px}
+      .app{padding:12px}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Үйлчлүүлэгчдийг бүртгэх</h1>
+        
+      </div>
+      
+    </header>
+
+    <div class="card">
+      <form id="clientForm" autocomplete="off">
+        <div>
+          <label for="name">Нэр</label>
+          <input id="name" name="name" type="text" placeholder="Үйлчлүүлэгчийн нэр" required />
+        </div>
+
+        <div>
+          <label for="phone">Утас</label>
+          <input id="phone" name="phone" type="text" placeholder="Зөвхөн дугаар" required />
+        </div>
+
+        <div >
+          <label for="note">Нүдний хараа болон зарим дэдээлэл</label>
+          <textarea id="note" rows="2" placeholder="Хараа, мэдээлэл"></textarea>
+        </div>
+
+        <div style="grid-column:1 / -1" class="actions">
+          <button id="saveBtn" type="submit">Нэмэх</button>
+          <button id="clearForm" type="button" class="secondary">Шинэ болгох</button>
+          <div style="margin-left:auto" class="small">Бүртгэлүүд: <span id="count">0</span></div>
+        </div>
+      </form>
+
+                        <div class="controls" style="margin-top:12px">
+                             <div class="search" style="flex:1">
+                             <input id="search" type="text" placeholder="Нэр эсвэл утсаар хайх..." />
+                            <button id="clearSearch" class="secondary" type="button">×</button>
+                        </div>
+                        </div>
+                        <div>
+<div class="list" id="listWrap">
+    <table id="clientsTable" aria-label="үйлчлүүлэгчдийн хүснэгт">
+         <thead>
+         <tr><th style="width:36%">Нэр</th><th style="width:26%">Утас</th><th>Тайлбар</th><th style="width:120px">Үйлдэл</th></tr>
+         </thead>
+        <tbody id="clientsTbody"></tbody>
+     </table>
+     <div id="empty" class="empty" style="display:none">Одоогоор нэг ч бүртгэл алга. Шинээр нэмнэ үү.</div>
+     </div>
+ </div>
+</div>
+
+  <script>
+    // Simple client manager using localStorage
+    const STORAGE_KEY = 'clients_v1';
+    const form = document.getElementById('clientForm');
+    const nameInput = document.getElementById('name');
+    const phoneInput = document.getElementById('phone');
+    const noteInput = document.getElementById('note');
+    const saveBtn = document.getElementById('saveBtn');
+    const clientsTbody = document.getElementById('clientsTbody');
+    const countEl = document.getElementById('count');
+    const searchInput = document.getElementById('search');
+    const clearSearchBtn = document.getElementById('clearSearch');
+    const clearAllBtn = document.getElementById('clearAll');
+    const emptyEl = document.getElementById('empty');
+    const exportCsvBtn = document.getElementById('exportCsv');
+    const exportJsonBtn = document.getElementById('exportJson');
+    const importFile = document.getElementById('importFile');
+    const importBtn = document.getElementById('importBtn');
+    const clearFormBtn = document.getElementById('clearForm');
+
+    let clients = [];
+    let editId = null;
+
+    function uid(){ return 'c_' + Math.random().toString(36).slice(2,9); }
+    function load(){ try{ clients = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') } catch(e){ clients = []; } render(); }
+    function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(clients)); render(); }
+    function formatPhone(p){ return p.trim(); }
+    function validatePhone(p){
+      const digits = p.replace(/\\D/g,'');
+      return digits.length >= 6;
+    }
+
+    function render(filter=''){
+      const filtered = clients.filter(c=>{
+        const q = filter.trim().toLowerCase();
+        if(!q) return true;
+        return c.name.toLowerCase().includes(q) || c.phone.toLowerCase().includes(q) || (c.note||'').toLowerCase().includes(q);
+      });
+      clientsTbody.innerHTML = '';
+      if(filtered.length === 0){
+        emptyEl.style.display = 'block';
+      } else {
+        emptyEl.style.display = 'none';
+      }
+      filtered.forEach(c=>{
+        const tr = document.createElement('tr');
+        const nameTd = document.createElement('td');
+        nameTd.innerHTML = '<strong>' + escapeHtml(c.name) + '</strong><div class="small" style="margin-top:6px;color:var(--muted)">'+ (c.createdAt?new Date(c.createdAt).toLocaleString():'') +'</div>';
+        const phoneTd = document.createElement('td');
+        phoneTd.textContent = c.phone;
+        const noteTd = document.createElement('td');
+        noteTd.textContent = c.note || '';
+        const actionsTd = document.createElement('td');
+        actionsTd.className = 'row-actions';
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Засах'; editBtn.className='secondary';
+        editBtn.onclick = ()=> startEdit(c.id);
+        const delBtn = document.createElement('button');
+        delBtn.textContent = 'Устгах'; delBtn.className='danger';
+        delBtn.onclick = ()=> deleteClient(c.id);
+        actionsTd.appendChild(editBtn);
+        actionsTd.appendChild(delBtn);
+
+        tr.appendChild(nameTd);
+        tr.appendChild(phoneTd);
+        tr.appendChild(noteTd);
+        tr.appendChild(actionsTd);
+        clientsTbody.appendChild(tr);
+      });
+      countEl.textContent = clients.length;
+    }
+
+    function escapeHtml(s){
+      if(!s) return '';
+      return s.replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); });
+    }
+
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const name = nameInput.value.trim();
+      const phone = formatPhone(phoneInput.value);
+      const note = noteInput.value.trim();
+      if(!name){ alert('Нэр оруулна уу'); return; }
+      if(!validatePhone(phone)){ alert('Утасны дугаарыг зөв оруулна уу (ямар ч тоогоор дор хаяж 6 цифр)'); return; }
+
+      if(editId){
+        const idx = clients.findIndex(c=>c.id===editId);
+        if(idx>=0){
+          clients[idx].name = name;
+          clients[idx].phone = phone;
+          clients[idx].note = note;
+          clients[idx].updatedAt = new Date().toISOString();
+          editId = null;
+          saveBtn.textContent = 'Нэмэх';
+        }
+      } else {
+        clients.unshift({ id: uid(), name, phone, note, createdAt:new Date().toISOString() });
+      }
+      save();
+      form.reset();
+      nameInput.focus();
+    });
+
+    function startEdit(id){
+      const c = clients.find(x=>x.id===id);
+      if(!c) return;
+      editId = id;
+      nameInput.value = c.name;
+      phoneInput.value = c.phone;
+      noteInput.value = c.note || '';
+      saveBtn.textContent = 'Хадгалах';
+      nameInput.focus();
+    }
+
+    function deleteClient(id){
+      if(!confirm('Энэ үйлчлүүлэгчийг устгах уу?')) return;
+      clients = clients.filter(c=>c.id!==id);
+      save();
+    }
+
+    clearSearchBtn.addEventListener('click', ()=>{
+      searchInput.value = '';
+      render('');
+      searchInput.focus();
+    });
+
+    searchInput.addEventListener('input', (e)=>{
+      render(e.target.value);
+    });
+
+    clearAllBtn.addEventListener('click', ()=>{
+      if(!confirm('Бүх бүртгэлийг устгах уу? Энийг сэргээх боломжгүй.')) return;
+      clients = [];
+      save();
+    });
+
+    exportJsonBtn.addEventListener('click', ()=>{
+      const data = JSON.stringify(clients, null, 2);
+      downloadFile('clients.json', data, 'application/json');
+    });
+
+    exportCsvBtn.addEventListener('click', ()=>{
+      if(clients.length===0){ alert('Экспорт хийх өгөгдөл алга.'); return; }
+      const rows = [['name','phone','note','createdAt','updatedAt']];
+      clients.forEach(c => rows.push([c.name, c.phone, c.note||'', c.createdAt||'', c.updatedAt||'']));
+      const csv = rows.map(r => r.map(cell => '"' + (''+cell).replace(/"/g,'""') + '"').join(',')).join('\\n');
+      downloadFile('clients.csv', csv, 'text/csv');
+    });
+
+    importBtn.addEventListener('click', ()=> importFile.click());
+
+    importFile.addEventListener('change', async (ev)=>{
+      const f = ev.target.files && ev.target.files[0];
+      if(!f) return;
+      try{
+        const text = await f.text();
+        const parsed = JSON.parse(text);
+        if(!Array.isArray(parsed)) { alert('JSON нь массив хэлбэртэй байх ёстой.'); return; }
+        const existingIds = new Set(clients.map(c=>c.id));
+        let added=0;
+        parsed.forEach(item=>{
+          if(!item.id) item.id = uid();
+          if(!existingIds.has(item.id)){
+            clients.push({
+              id:item.id,
+              name: item.name||'',
+              phone: item.phone||'',
+              note: item.note||'',
+              createdAt: item.createdAt||new Date().toISOString(),
+              updatedAt: item.updatedAt||null
+            });
+            added++;
+          }
+        });
+        save();
+        alert('Импорт амжилттай. Нэмсэн: ' + added);
+      } catch(err){
+        alert('Файлыг уншихад алдаа гарлаа: ' + err.message);
+      } finally {
+        importFile.value = '';
+      }
+    });
+
+    clearFormBtn.addEventListener('click', ()=>{
+      editId = null;
+      form.reset();
+      saveBtn.textContent = 'Нэмэх';
+      nameInput.focus();
+    });
+
+    function downloadFile(filename, content, mime){
+      const blob = new Blob([content], { type: mime || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      a.remove(); URL.revokeObjectURL(url);
+    }
+
+    // initialize
+    load();
+
+    // register service worker for PWA
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js")
+        .then(()=> console.log("Service Worker registered"))
+        .catch(err => console.warn("SW register failed:", err));
+    }
+  </script>
+  <link rel="manifest" href="manifest.json">
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").then(() => {
+      console.log("Service Worker registered");
+    });
+  }
+</script>
+</body>
+</html>
